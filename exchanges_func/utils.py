@@ -1,7 +1,7 @@
 import json
 import math
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 import requests
 
 def save_to_json(data, filename):
@@ -44,6 +44,31 @@ def convert_timestamp_to_date(timestamp_ms_str):
     
     return date_only
 
+def assign_time(mode):
+    """
+        Has 2 modes:
+            1. Full - Start Date is 2 years ago from current time
+            2. Weekly - Start Date is 1 week ago from current time
+
+    """
+    current_time_exact = datetime.now()
+
+    # Convert the date back to a datetime object at midnight (00:00:00)
+    current_date = datetime.combine(current_time_exact, datetime.min.time())
+
+    end_date = current_date 
+
+    # 2 Modes
+    if mode == 'Full': 
+        print('Getting data from current date to 2 years ago')
+        start_date = end_date - timedelta(days=730)  # 2 years = 730 days
+        
+    elif mode == 'Weekly':
+        print('Getting data from current date to 1 week ago')
+        start_date = end_date - timedelta(weeks=1)
+
+    return start_date, end_date
+
 # Binance
 def get_binance_symbols():
     url = "https://api.binance.com/api/v3/exchangeInfo"
@@ -52,20 +77,48 @@ def get_binance_symbols():
 
     symbols = data.get('symbols')
     all_symbols = []
+    valid_endings = ['USDT', 'USDC', 'ETH', 'BTC', 'BNB']
 
     for item in symbols:
-
         status = item.get('status')
+        symbol = item.get('symbol')
 
         if status == 'TRADING':
-
-            symbol_list = {
-                'symbol': item.get('symbol')
-            }
-
-            all_symbols.append(symbol_list)
+            if any(symbol.endswith(ending) or symbol.startswith(ending) for ending in valid_endings):
+                symbol_list = {
+                    'symbol': symbol
+                }
+                all_symbols.append(symbol_list)
     
     return all_symbols
+
+def extract_date(datetime_str):
+    # Convert the string to a datetime object
+    dt = datetime.strptime(datetime_str, "%Y-%m-%d %H:%M:%S")
+
+    date_only = dt.strftime('%Y-%m-%d')
+    # Return only the date part as a string
+    return date_only
+
+def get_bin_price(asset):
+    # # Check if the price is already in the cache
+    # if asset in price_cache:
+    #     return price_cache[asset]
+    
+    # Stablecoins
+    if asset in ['USDT', 'USDC', 'BUSD']:
+        return 1.0
+    
+    # If not, fetch the price from the API
+    url = f'https://api.binance.com/api/v3/ticker/price?symbol={asset}USDT'
+    response = requests.get(url)
+    data = response.json() 
+    
+    # Convert price to float and cache it
+    price = float(data.get('price', 0.0))
+    # price_cache[asset] = price
+    
+    return price
 
 # Owner Loop
 def process_owners(owner):

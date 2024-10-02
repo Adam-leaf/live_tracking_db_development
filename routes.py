@@ -1,35 +1,27 @@
-from db_func.funcs import add_txn, get_byPic, get_all
+from db_func.funcs import get_as_dict, get_all, initiate
 from db_func import app
-from exchanges_func.binance_spot_hist import collect_history
-from exchanges_func.utils import save_to_json
+from exchanges_func.exchange_master import update_db, start_calculation
+from flask import render_template
 
-acc_owners = ['A'] # Debug
-#acc_owners = ['J', 'JM2', 'VKEE', 'KS']
+# Frontend Routes
+@app.route("/", methods=["GET"])
+def home():
 
-@app.route("/collect_bin_spot_full", methods=["GET"])
-def bin_spot_full():
+    all_transactions = get_as_dict(lambda: get_all())
+    return render_template('index.html', transactions=all_transactions)
 
-    for owner in acc_owners:
-        owner_hist = collect_history(owner, 'Full')
-        save_to_json(owner_hist, 'hist.json')
+# Backend Routes
+@app.route("/db_update", methods=["GET"])
+def start_update_db():
 
-        for hist in owner_hist:
-            date = hist.get('date')
-            position = hist.get('position')
-            tx_type = hist.get('action')
-            pic = hist.get('PIC')
-            exchange = hist.get('exchange')
-            token_amt = hist.get('exec_qty')
-            token_price = hist.get('exec_price')
-            usd_value = hist.get('usd_value')
+    initiate()
+    update_db("Weekly")
 
-            add_txn(date, position, tx_type, pic, exchange, token_amt, token_price, usd_value)    
+    return "I am updating the database"
 
-    return "Data stored to database"
-
-@app.route("/get_all_transactions", methods=["GET"])
-def get_all_transactions():
+@app.route("/calc_pnl", methods=["GET"])
+def start_calc_pnl():
     
-    database_contents = get_all() 
+    start_calculation()
 
-    return database_contents
+    return "You can see me calculating PNL in the console.log"

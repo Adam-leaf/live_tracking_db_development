@@ -4,3 +4,4 @@ env/
 .env
 hist.json
 instance/
+static

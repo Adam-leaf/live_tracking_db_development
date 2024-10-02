@@ -1,7 +1,13 @@
 from flask_sqlalchemy import SQLAlchemy
 from flask import Flask
+import os
 
-app = Flask(__name__)
+""" This 4 Lines of Code is needed, if not templates would need to be in the same folder flask was initialized"""
+current_dir = os.path.dirname(os.path.abspath(__file__)) # Get the directory of the current file (__init__.py)
+project_root = os.path.dirname(current_dir) # Go up one level to the project root
+template_dir = os.path.join(project_root, 'templates')# Path to the templates folder
+
+app = Flask(__name__, template_folder=template_dir)
 
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///site.db'
 
