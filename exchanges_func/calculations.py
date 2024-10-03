@@ -1,4 +1,5 @@
 import pandas as pd
+import json
 from exchanges_func.utils import get_bin_price
 
 def clean_transactions(data):
@@ -64,16 +65,22 @@ def calculate_pnl(data):
     grouped_by_pic = df.groupby('pic')
 
     for pic_name, pic_group in grouped_by_pic:
-        portfolio_structure[pic_name] = {}
+        portfolio_structure[pic_name] = {
+            'exchanges': {},
+            'total_pic_pnl': 0
+        }
         
         grouped_by_exchange = pic_group.groupby('exchange')
         for exchange_name, exchange_group in grouped_by_exchange:
-            portfolio_structure[pic_name][exchange_name] = {}
+            portfolio_structure[pic_name]['exchanges'][exchange_name] = {
+                'tokens': {},
+                'total_exchange_pnl': 0
+            }
             
             grouped_by_token = exchange_group.groupby('position')
             for token_name, token_group in grouped_by_token:
-                portfolio_structure[pic_name][exchange_name][token_name] = {
-                    'transactions': token_group.reset_index(drop=True),
+                portfolio_structure[pic_name]['exchanges'][exchange_name]['tokens'][token_name] = {
+                    'transactions': token_group.reset_index(drop=True).to_dict(orient='records'), # Remove this from the final REST API
                     'pnl': None,
                     'pnl_verification': None
                 }
@@ -101,7 +108,7 @@ def calculate_pnl(data):
                 current_price = get_bin_price(token_name)
                 df_pnl_updated = update_df_pnl(df_pnl, avg_buy_price, value_sold, amount_sold, current_balance, current_price)
 
-                portfolio_structure[pic_name][exchange_name][token_name]['pnl'] = df_pnl_updated
+                portfolio_structure[pic_name]['exchanges'][exchange_name]['tokens'][token_name]['pnl'] = df_pnl_updated.to_dict(orient='records')
 
                 curr_usd_value = current_balance * current_price
                 difference = (value_sold + curr_usd_value) - value_spent
@@ -118,9 +125,15 @@ def calculate_pnl(data):
                     'Total PNL': [pnl_total]
                 })
 
-                portfolio_structure[pic_name][exchange_name][token_name]['pnl_verification'] = df_verifier
+                portfolio_structure[pic_name]['exchanges'][exchange_name]['tokens'][token_name]['pnl_verification'] = df_verifier.to_dict(orient='records')
 
-    return portfolio_structure
+                # Update total exchange PnL
+                portfolio_structure[pic_name]['exchanges'][exchange_name]['total_exchange_pnl'] += pnl_total
+
+            # Update total PIC PnL after processing all tokens for this exchange
+            portfolio_structure[pic_name]['total_pic_pnl'] += portfolio_structure[pic_name]['exchanges'][exchange_name]['total_exchange_pnl']
+
+    return json.dumps(portfolio_structure)
 
 
 

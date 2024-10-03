@@ -10,6 +10,14 @@ def home():
     all_transactions = get_as_dict(lambda: get_all())
     return render_template('index.html', transactions=all_transactions)
 
+@app.route("/view_pnl", methods=["GET"])
+def view_pnl():
+    
+    json_portfolio = start_calculation()
+
+    return render_template('view_pnl.html', portfolio=json_portfolio)
+
+
 # Backend Routes
 @app.route("/db_update", methods=["GET"])
 def start_update_db():
@@ -22,6 +30,6 @@ def start_update_db():
 @app.route("/calc_pnl", methods=["GET"])
 def start_calc_pnl():
     
-    start_calculation()
+    json_portfolio = start_calculation()
 
-    return "You can see me calculating PNL in the console.log"
+    return json_portfolio

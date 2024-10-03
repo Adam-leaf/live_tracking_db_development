@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portfolio PnL View</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 20px auto;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        h1, h2, h3 {
+            color: #333;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        th, td {
+            padding: 10px;
+            border: 1px solid #ddd;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+        .positive {
+            color: green;
+        }
+        .negative {
+            color: red;
+        }
+        .position-container {
+            border: 2px solid #007bff;
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        .position-container h4 {
+            background-color: #007bff;
+            color: white;
+            padding: 10px;
+            margin: -15px -15px 15px -15px;
+            border-top-left-radius: 3px;
+            border-top-right-radius: 3px;
+        }
+        .navbar {
+            background-color: #333;
+            overflow: hidden;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+        .navbar a {
+            float: left;
+            display: block;
+            color: #f2f2f2;
+            text-align: center;
+            padding: 14px 16px;
+            text-decoration: none;
+        }
+        .navbar a:hover {
+            background-color: #ddd;
+            color: black;
+        }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <a href="/">All Transactions</a>
+        <a href="#summary">Summary</a>
+        {% for pic in portfolio %}
+            <a href="#{{ pic }}">{{ pic }}</a>
+        {% endfor %}
+    </div>
+
+    <div class="container">
+        <h1 id="summary">Portfolio PnL Summary</h1>
+        
+        {% for pic, pic_data in portfolio.items() %}
+            <h2 id="{{ pic }}">{{ pic }}</h2>
+            <p>Total PIC PnL: <span class="{{ 'positive' if pic_data.total_pic_pnl > 0 else 'negative' }}">{{ '%.2f'|format(pic_data.total_pic_pnl) }} USD</span></p>
+            
+            {% for exchange, exchange_data in pic_data.exchanges.items() %}
+                <h3>{{ exchange|capitalize }}</h3>
+                <p>Total Exchange PnL: <span class="{{ 'positive' if exchange_data.total_exchange_pnl > 0 else 'negative' }}">{{ '%.2f'|format(exchange_data.total_exchange_pnl) }} USD</span></p>
+                
+                {% for token, token_data in exchange_data.tokens.items() %}
+                    <div class="position-container">
+                        <h4>{{ token }}</h4>
+                        
+                        <h5>PnL</h5>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>PnL Type</th>
+                                    <th>Position</th>
+                                    <th>Current Balance</th>
+                                    <th>Avg Buy (USD)</th>
+                                    <th>Sold Amount</th>
+                                    <th>Sold Value (USD)</th>
+                                    <th>USD Value</th>
+                                    <th>PnL</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for pnl in token_data.pnl %}
+                                    <tr>
+                                        <td>{{ pnl['PnL Type'] }}</td>
+                                        <td>{{ pnl['Position'] }}</td>
+                                        <td>{{ '%.8f'|format(pnl['Current Balance']) }}</td>
+                                        <td>{{ '%.2f'|format(pnl['Avg Buy (USD)']) }}</td>
+                                        <td>{{ '%.8f'|format(pnl['Sold Amount']) }}</td>
+                                        <td>{{ '%.2f'|format(pnl['Sold Value (USD)']) }}</td>
+                                        <td>{{ '%.2f'|format(pnl['USD Value']) }}</td>
+                                        <td class="{{ 'positive' if pnl['PnL'] > 0 else 'negative' }}">{{ '%.2f'|format(pnl['PnL']) }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                        
+                        <h5>PnL Verification</h5>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>In Amount</th>
+                                    <th>Out Amount</th>
+                                    <th>Bal USD</th>
+                                    <th>Total PNL</th>
+                                    <th>Difference</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for verification in token_data.pnl_verification %}
+                                    <tr>
+                                        <td>{{ '%.2f'|format(verification['In Amount']) }}</td>
+                                        <td>{{ '%.2f'|format(verification['Out Amount']) }}</td>
+                                        <td>{{ '%.2f'|format(verification['Bal USD']) }}</td>
+                                        <td class="{{ 'positive' if verification['Total PNL'] > 0 else 'negative' }}">{{ '%.2f'|format(verification['Total PNL']) }}</td>
+                                        <td>{{ '%.2f'|format(verification['Difference']) }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                        
+                        <h5>Transactions</h5>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Type</th>
+                                    <th>Amount</th>
+                                    <th>Price</th>
+                                    <th>USD Value</th>
+                                    <th>Exchange ID</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for txn in token_data.transactions %}
+                                    <tr>
+                                        <td>{{ txn['txn_date'] }}</td>
+                                        <td>{{ txn['txn_type'] }}</td>
+                                        <td>{{ '%.8f'|format(txn['token_amt']) }}</td>
+                                        <td>{{ '%.2f'|format(txn['token_price']) }}</td>
+                                        <td>{{ '%.2f'|format(txn['usd_value']) }}</td>
+                                        <td>{{ txn['exchange_id'] }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% endfor %}
+            {% endfor %}
+        {% endfor %}
+    </div>
+</body>
+</html>

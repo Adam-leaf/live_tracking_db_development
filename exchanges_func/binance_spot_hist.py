@@ -46,7 +46,7 @@ def get_binance_trade_history(bin_api_key, bin_secret_key, start_time, end_time,
         print(response.text)
         return []  
 
-def loop_get_binance_history(bin_api_key, bin_secret_key, start_date, end_date, binance_symbols, max_retries=5, retry_delay=20):
+def loop_get_binance_history(bin_api_key, bin_secret_key, start_date, end_date, binance_symbols, max_retries=5, retry_delay=60):
     # Handling dates 
     unix_start = convert_to_unix(start_date)
     unix_end = convert_to_unix(end_date)
@@ -317,7 +317,6 @@ def fetch_history(owner_data, history_type, start_date, end_date):
     else:
         raise ValueError(f"Invalid history type: {history_type}")
 
-
 def save_to_database(df):
     """Save the DataFrame to the database based on the history type."""
     json_hist = df.to_dict(orient='records')
@@ -356,7 +355,6 @@ def save_binance_records(acc_owners, mode):
             df = fetch_history(owner_data, history_type, start_date, end_date)
             save_to_database(df)
 
-# Think of how the master code calls for the db update (discuss with vader) - is it through the API routes or a button or how?
 
 # Facts
 # 1. There will be a function that will collect and store 2 years data
