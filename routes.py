@@ -25,7 +25,7 @@ def start_update_db():
     #acc_owners = ['J', 'JM2', 'VKEE', 'KS']
 
     initiate()
-    update_db(acc_owners,"Weekly")
+    update_db(acc_owners,"Test")
 
     return "I am updating the database"
 
