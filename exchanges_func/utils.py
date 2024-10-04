@@ -65,7 +65,11 @@ def assign_time(mode):
         
     elif mode == 'Weekly':
         print('Getting data from current date to 1 week ago')
-        start_date = end_date - timedelta(weeks=24)
+        start_date = end_date - timedelta(weeks=1)
+
+    elif mode == '2 Months':
+        print('Getting data from current date to 8 week ago')
+        start_date = end_date - timedelta(weeks=8)
 
     return start_date, end_date
 

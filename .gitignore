@@ -5,3 +5,4 @@ env/
 hist.json
 instance/
 static
+aws_ec2.pem

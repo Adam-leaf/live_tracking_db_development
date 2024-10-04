@@ -4,9 +4,7 @@ from db_func.funcs import get_as_dict, get_all
 import pandas as pd
 import json
 
-def update_db(mode):
-    acc_owners = ['A'] # Development
-    #acc_owners = ['J', 'JM2', 'VKEE', 'KS']
+def update_db(acc_owners, mode):
 
     save_binance_records(acc_owners, mode)
     #save_bybit_records(acc_owners, mode)
