@@ -18,9 +18,11 @@ import requests
         3. Withdrawal History 
 """
 
-# Trade History Section - TODO: Not sure if Retry Mech for API failure is working
-def get_binance_trade_history(bin_api_key, bin_secret_key, start_time, end_time, symbol):
+# Trade History Section 
+class WeightLimitExceeded(Exception):
+    pass
 
+def get_binance_trade_history(bin_api_key, bin_secret_key, start_time, end_time, symbol):
     base_url = 'https://api.binance.com'
     limit = 1000
 
@@ -38,56 +40,71 @@ def get_binance_trade_history(bin_api_key, bin_secret_key, start_time, end_time,
 
     if response.status_code == 200:
         data = response.json()
-        if data is None:
-            data = []  
-        return data
+        return data if data else []
+    elif response.status_code == 429:
+        raise WeightLimitExceeded(response.json().get('msg', 'Weight limit exceeded'))
     else:
         print(f"Error: Received status code {response.status_code} for symbol {symbol} with start_time {start_time} and end_time {end_time}")
         print(response.text)
-        return []  
+        return []
 
 def loop_get_binance_history(bin_api_key, bin_secret_key, start_date, end_date, binance_symbols, max_retries=5, retry_delay=60):
-    # Handling dates 
+
     unix_start = convert_to_unix(start_date)
     unix_end = convert_to_unix(end_date)
 
     print(f"Binance: Full unix range {unix_start} to {unix_end}")
 
-    current_start_time = start_date # Current start time for the loop
+    current_start_time = start_date
     trade_history_full = []
+    weight_used = 0
+    weight_limit = 6000
+    weight_reset_time = time.time() + 60  # Reset weight after 1 minute
 
     while current_start_time < end_date:
         current_end_time = min(current_start_time + timedelta(days=1), end_date)
 
         unix_start = convert_to_unix(current_start_time)
         unix_end = convert_to_unix(current_end_time)
-        trade_history_in_range = []
 
         print(f"Starting at {unix_start}, ending at {unix_end}")
 
         for symbol_item in binance_symbols:
             symbol = symbol_item.get('symbol')
-            
             print(f"Current Symbol: {symbol}")
             
-            for attempt in range(max_retries):
+            retry_count = 0
+            while retry_count < max_retries:
                 try:
-                    raw_history = get_binance_trade_history(bin_api_key, bin_secret_key, unix_start, unix_end, symbol) #API Call
-                    print(raw_history)
-                    trade_history_in_range.extend(raw_history)
-                    break  # If successful, break out of the retry loop
-                except requests.exceptions.RequestException as e:
-                    if attempt < max_retries - 1:  # If not the last attempt
-                        print(f"Error occurred: {e}. Retrying in {retry_delay} seconds...")
-                        time.sleep(retry_delay)
-                    else:
-                        print(f"Failed to fetch data for {symbol} after {max_retries} attempts. Skipping...")
+                    # Check if we need to reset the weight
+                    if time.time() >= weight_reset_time:
+                        weight_used = 0
+                        weight_reset_time = time.time() + 60
 
-            # Spot API Weight Limit (Per Minute) - 6000, API Weight Cost: 20, Limit 300 Calls Per Minute
-            # time.sleep(0.2)  
-        
-        # Save info and update time
-        trade_history_full.extend(trade_history_in_range)
+                    # Check if we have enough weight
+                    if weight_used + 20 > weight_limit:
+                        sleep_time = weight_reset_time - time.time()
+                        print(f"Weight limit approaching. Sleeping for {sleep_time:.2f} seconds.")
+                        time.sleep(max(sleep_time, 0))
+                        weight_used = 0
+                        weight_reset_time = time.time() + 60
+
+                    raw_history = get_binance_trade_history(bin_api_key, bin_secret_key, unix_start, unix_end, symbol)
+                    trade_history_full.extend(raw_history)
+                    weight_used += 20
+                    break  # Success, move to next symbol
+                except WeightLimitExceeded as e:
+                    print(f"Weight limit exceeded: {e}. Retrying in {retry_delay} seconds...")
+                    time.sleep(retry_delay)
+                    retry_count += 1
+                except requests.exceptions.RequestException as e:
+                    print(f"Error occurred: {e}. Retrying in {retry_delay} seconds...")
+                    time.sleep(retry_delay)
+                    retry_count += 1
+
+            if retry_count == max_retries:
+                print(f"Failed to fetch data for {symbol} after {max_retries} attempts. Skipping...")
+
         current_start_time = current_end_time 
 
     return trade_history_full
