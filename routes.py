@@ -3,9 +3,6 @@ from db_func import app
 from exchanges_func.exchange_master import update_db, start_calculation
 from flask import render_template
 
-acc_owners = ['J', 'JM'] # Development
-#acc_owners = ['J', 'JM2', 'VKEE', 'KS']
-
 # Frontend Routes
 @app.route("/", methods=["GET"])
 def home():
@@ -24,9 +21,11 @@ def view_pnl():
 # Backend Routes
 @app.route("/db_update", methods=["GET"])
 def start_update_db():
+    acc_owners = ['TEST'] # Development
+    #acc_owners = ['J', 'JM2', 'VKEE', 'KS']
 
     initiate()
-    update_db(acc_owners,"Month")
+    update_db(acc_owners,"Weekly")
 
     return "I am updating the database"
 
