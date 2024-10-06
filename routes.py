@@ -25,7 +25,7 @@ def start_update_db():
     #acc_owners = ['J', 'JM2', 'VKEE', 'KS']
 
     initiate()
-    update_db(acc_owners,"Month")
+    update_db(acc_owners,"Full")
 
     return "I am updating the database"
 
