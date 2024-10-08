@@ -44,12 +44,15 @@ def convert_timestamp_to_date(timestamp_ms_str):
     
     return date_only
 
+from datetime import datetime, timedelta
+
 def assign_time(mode):
     """
-        Has 2 modes:
-            1. Full - Start Date is 2 years ago from current time
-            2. Weekly - Start Date is 1 week ago from current time
-
+    Has 4 modes:
+        1. Full - Start Date is 2 years ago from current time
+        2. Weekly - Start Date is 1 week ago from current time
+        3. Monthly - Start Date is 4 weeks ago from current time
+        4. Since2023 - Start Date is January 1, 2023
     """
     current_time_exact = datetime.now()
 
@@ -58,7 +61,7 @@ def assign_time(mode):
 
     end_date = current_date 
 
-    # 2 Modes
+    # 4 Modes
     if mode == 'Full': 
         print('Getting data from current date to 2 years ago')
         start_date = end_date - timedelta(days=730)  # 2 years = 730 days
@@ -67,9 +70,16 @@ def assign_time(mode):
         print('Getting data from current date to 1 week ago')
         start_date = end_date - timedelta(weeks=1)
 
-    elif mode == 'Month':
-        print('Getting data from current date to 4 week ago')
+    elif mode == 'Monthly':
+        print('Getting data from current date to 4 weeks ago')
         start_date = end_date - timedelta(weeks=4)
+
+    elif mode == 'Since2023':
+        print('Getting data from current date to January 1, 2023')
+        start_date = datetime(2023, 1, 1)
+
+    else:
+        raise ValueError("Invalid mode. Choose 'Full', 'Weekly', 'Monthly', or 'Since2023'.")
 
     return start_date, end_date
 
@@ -124,6 +134,32 @@ def get_bin_price(asset):
     
     return price
 
+# Bybit
+def get_bybit_price(asset):
+    # Check if the price is already in the cache
+    # if asset in price_cache:
+    #     return price_cache[asset]
+    
+    # Stablecoins
+    if asset in ['USDT', 'USDC', 'BUSD']:
+        return 1.0
+    
+    # If not, fetch the price from the API
+
+    url = f'https://api.bybit.com/v5/market/tickers?category=spot&symbol={asset}USDT'
+    response = requests.get(url)
+    data = response.json()
+
+    # Convert price to float and cache it
+    result = data.get('result', {})
+    list = result.get('list')[0]
+    lastPrice = list.get('lastPrice')
+
+    # price_cache[asset] = lastPrice
+    
+    return lastPrice
+
+
 # Owner Loop
 def process_owners(owner):
 
@@ -147,8 +183,8 @@ def process_owners(owner):
     bin_secret_key = os.getenv(f'{owner}_BIN_SECRET_KEY', 'none')
 
     owner_data = {
-        "bb_api_key": bb_api_key,
-        "bb_secret_key": bb_secret_key,
+        "bybit_api_key": bb_api_key,
+        "bybit_secret_key": bb_secret_key,
         "bin_api_key": bin_api_key,
         "bin_secret_key": bin_secret_key,
         "pic": pic.get(owner),

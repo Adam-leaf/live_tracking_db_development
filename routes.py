@@ -21,11 +21,11 @@ def view_pnl():
 # Backend Routes
 @app.route("/db_update", methods=["GET"])
 def start_update_db():
-    acc_owners = ['TEST'] # Development
+    acc_owners = ['Test'] # Development
     #acc_owners = ['J', 'JM2', 'VKEE', 'KS']
 
     initiate()
-    update_db(acc_owners,"Full")
+    update_db(acc_owners,"Since2023")
 
     return "I am updating the database"
 

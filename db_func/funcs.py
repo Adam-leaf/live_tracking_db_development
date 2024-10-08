@@ -10,7 +10,7 @@ def initiate () :
 def add_txn(exchange_id_in, txn_date_in, position_in, txn_type_in, pic_in, exchange_in, token_amt_in, price_in, usd_amt_in):
     
     # Check if a transaction with the same exchange_id and pic already exists
-    existing_txn = Transaction.query.filter_by(exchange_id=exchange_id_in, pic=pic_in).first()
+    existing_txn = Transaction.query.filter_by(exchange_id=exchange_id_in, pic=pic_in, exchange = exchange_in).first()
     
     if existing_txn is None:
         new_txn = Transaction(
@@ -28,12 +28,13 @@ def add_txn(exchange_id_in, txn_date_in, position_in, txn_type_in, pic_in, excha
         try:
             db.session.add(new_txn)
             db.session.commit()
-            print(f"Added new transaction: {exchange_id_in} for PIC: {pic_in}")
+            print(f"Added new transaction: {exchange_id_in} \nPIC: {pic_in}, with exchange: {exchange_in}")
         except IntegrityError:
             db.session.rollback()
-            print(f"Duplicate transaction found: {exchange_id_in} for PIC: {pic_in}. Skipping.")
+            print(f"Duplicate transaction found: {exchange_id_in} \nPIC: {pic_in}, with exchange: {exchange_in}. Skipping.")
     else:
-        print(f"Transaction already exists: {exchange_id_in} for PIC: {pic_in}. Skipping.")
+        print("")
+        print(f"Transaction already exists: {exchange_id_in}  \nPIC: {pic_in}, with exchange: {exchange_in}. Skipping.")
 
 
 def get_all():

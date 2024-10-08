@@ -221,7 +221,7 @@ def parse_bin_deposits(bin_api_key, bin_secret_key, owner, start_date, end_date)
         order = {
             
             'date': date,
-            'exchange_id': trade.get('id'),
+            'exchange_id': trade.get('txId'),
             'position': symbol, 
             'action': 'Deposit',
             'PIC': owner,
@@ -306,7 +306,7 @@ def parse_bin_withdrawals(bin_api_key, bin_secret_key, owner, start_date, end_da
 
         order = {
             'date': date,
-            'exchange_id': trade.get('id'),
+            'exchange_id': trade.get('txId'),
             'position': symbol, 
             'action': 'Withdraw',
             'PIC': owner,
@@ -366,15 +366,13 @@ def save_binance_records(acc_owners, mode):
     for owner in acc_owners:
 
         owner_data = process_owners(owner)
+        # Check if Bybit API key or secret key is "none"
+        if owner_data['bin_api_key'] == 'none' or owner_data['bin_secret_key'] == 'none':
+            print(f"Skipping owner {owner_data['pic']} due to missing Binance API credentials")
+            continue
+
         history_types = ['trades', 'deposits', 'withdrawals']
 
         for history_type in history_types:
             df = fetch_history(owner_data, history_type, start_date, end_date)
             save_to_database(df)
-
-
-# Facts
-# 1. There will be a function that will collect and store 2 years data
-# 2. There will be a function that will add data up to the current date.
-#   - For this to work we will need to compare latest data entry to latest existing data entry. (Should have 6 types of trx)
-#   - Need a query.filter for exchange and date 
