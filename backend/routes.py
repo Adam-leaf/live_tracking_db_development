@@ -1,7 +1,11 @@
 from db_func.funcs import get_as_dict, get_all, initiate
 from db_func import app
-from exchanges_func.exchange_master import update_db, start_calculation
+from exchanges_func.exchange_master import update_db, start_calculation, convert
 from flask import render_template
+from flask_cors import CORS
+
+# Enable CORS for all routes
+CORS(app)
 
 # Frontend Routes
 @app.route("/", methods=["GET"])
@@ -35,3 +39,10 @@ def start_calc_pnl():
     json_portfolio = start_calculation()
 
     return json_portfolio
+
+@app.route("/manual", methods=["GET"])
+def manual():
+    
+    convert()
+
+    return "Updated DB Manually"

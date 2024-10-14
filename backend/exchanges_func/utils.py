@@ -29,6 +29,12 @@ def convert_to_unix(date_input):
     no_dec_timestamp = math.trunc(timestamp_ms)
     return no_dec_timestamp
 
+def convert_to_unix_v2(utc_time_str):
+    utc_time = datetime.strptime(utc_time_str, "%Y-%m-%d %H:%M:%S")
+    timestamp_ms = int(utc_time.timestamp() * 1000)
+    
+    return timestamp_ms
+
 def convert_timestamp_to_date(timestamp_ms_str):
     # Convert the string timestamp to an integer
     timestamp_ms = int(timestamp_ms_str)
@@ -43,8 +49,6 @@ def convert_timestamp_to_date(timestamp_ms_str):
     date_only = date_time.strftime('%Y-%m-%d')
     
     return date_only
-
-from datetime import datetime, timedelta
 
 def assign_time(mode):
     """
@@ -82,6 +86,7 @@ def assign_time(mode):
         raise ValueError("Invalid mode. Choose 'Full', 'Weekly', 'Monthly', or 'Since2023'.")
 
     return start_date, end_date
+
 
 # Binance
 def get_binance_symbols():
@@ -134,6 +139,32 @@ def get_bin_price(asset):
     
     return price
 
+def get_bin_hist_price(asset, timestamp):
+    # Stablecoins
+    if asset in ['USDT', 'USDC', 'BUSD']:
+        return 1.0
+
+    query = f"symbol={asset}USDT&interval=1s&startTime={timestamp}&endTime={timestamp}"  # 1s interval
+    url = f"https://api.binance.com/api/v3/klines?{query}"
+    
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+        data = response.json()
+        
+        if data:  # If data exists
+            return float(data[0][4])  # Return closing price
+        else:  # If data is empty (doesn't exist for the timestamp)
+            print(f"No data exists for {asset} at timestamp {timestamp}")
+            return 0
+    except requests.RequestException as e:
+        print(f"Error fetching data for {asset} at timestamp {timestamp}: {e}")
+        return 0
+    except (ValueError, IndexError) as e:
+        print(f"Error processing data for {asset} at timestamp {timestamp}: {e}")
+        return 0
+
+
 # Bybit
 def get_bybit_price(asset):
     # Check if the price is already in the cache
@@ -159,6 +190,34 @@ def get_bybit_price(asset):
     
     return lastPrice
 
+def get_bybit_hist_price(asset, timestamp):
+    category = 'spot'
+
+    # Stablecoins
+    if asset in ['USDT', 'USDC', 'BUSD']:
+        return 1.0
+
+    query = f"symbol={asset}USDT&interval=1&category={category}&start={timestamp}&end={timestamp}"  # 1m interval
+    url = f"https://api.bybit.com/v5/market/kline?{query}"
+    
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+        data = response.json()
+        print(data)
+        
+        if data.get("result", {}).get("list"):  # Check if data exists
+            closing_price = float(data["result"]["list"][0][4])
+            return closing_price
+        else:  # If data is empty or doesn't exist for the timestamp
+            print(f"No data exists for {asset} at timestamp {timestamp}")
+            return 0
+    except requests.RequestException as e:
+        print(f"Error fetching data for {asset} at timestamp {timestamp}: {e}")
+        return 0
+    except (ValueError, IndexError, KeyError) as e:
+        print(f"Error processing data for {asset} at timestamp {timestamp}: {e}")
+        return 0
 
 # Owner Loop
 def process_owners(owner):

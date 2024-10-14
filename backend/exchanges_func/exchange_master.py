@@ -1,6 +1,7 @@
 from exchanges_func.binance_spot_hist import save_binance_records
 from exchanges_func.bybit_spot_hist import save_bybit_records
 from exchanges_func.calculations import calculate_pnl
+from exchanges_func.manual_convert import process_manual 
 from db_func.funcs import get_as_dict, get_all
 import json
 
@@ -14,6 +15,10 @@ def start_calculation():
     portfolio_data = json.loads(portfolio_data_json)
 
     return portfolio_data
+
+def convert():
+    process_manual("./static/2021.csv", "binance")
+    process_manual("./static/2022.csv", "binance")
 
 def display_all():
     pass

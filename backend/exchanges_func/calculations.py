@@ -1,6 +1,13 @@
 import pandas as pd
 import json
 from exchanges_func.utils import get_bin_price
+from datetime import datetime
+
+def json_serial(obj):
+    """JSON serializer for objects not serializable by default json code"""
+    if isinstance(obj, (datetime, pd.Timestamp)):
+        return obj.strftime('%Y-%m-%d')  # Format date as YYYY-MM-DD
+    raise TypeError(f"Type {type(obj)} not serializable")
 
 def clean_transactions(data):
     """
@@ -12,8 +19,11 @@ def clean_transactions(data):
     
     # Function to extract the significant token
     def extract_significant_token(position):
+        # If the position is already BTC or ETH, return it as is
+        if position in ['BTC', 'ETH']:
+            return position
 
-        quote_currencies = ['USDT', 'USD', 'BUSD', 'USDC', 'BTC', 'ETH']
+        quote_currencies = ['BUSD','USDT', 'USD', 'USDC', 'BTC', 'ETH'] # FIX THIS, BUSD can become B
         
         # Remove quote currencies from the end of the position string
         for quote in quote_currencies:
@@ -61,6 +71,12 @@ def calculate_pnl(data):
     all_transactions = clean_transactions(data)
     df = pd.DataFrame(all_transactions)
 
+    # Convert 'date' column to datetime if it's not already
+    df['txn_date'] = pd.to_datetime(df['txn_date'])
+
+    # Sort the dataframe by date
+    df = df.sort_values('txn_date')
+
     portfolio_structure = {}
     grouped_by_pic = df.groupby('pic')
 
@@ -79,8 +95,11 @@ def calculate_pnl(data):
             
             grouped_by_token = exchange_group.groupby('position')
             for token_name, token_group in grouped_by_token:
+                # Sort token_group by date
+                token_group['txn_date'] = token_group['txn_date'].dt.strftime('%Y-%m-%d')
+
                 portfolio_structure[pic_name]['exchanges'][exchange_name]['tokens'][token_name] = {
-                    'transactions': token_group.reset_index(drop=True).to_dict(orient='records'), # Remove this from the final REST API
+                    'transactions': json.loads(token_group.reset_index(drop=True).to_json(orient='records')),
                     'pnl': None,
                     'pnl_verification': None
                 }
@@ -94,10 +113,10 @@ def calculate_pnl(data):
                 value_sold = 0.0
 
                 for txn_type, txn_group in token_group.groupby('txn_type'):
-                    if txn_type in ['Buy', 'Deposit']:
+                    if txn_type in ['Buy', 'Deposit', 'Rebate', 'Revenue', 'Commision']:
                         amount_bought += txn_group['token_amt'].sum()
                         value_spent += txn_group['usd_value'].sum()
-                    elif txn_type in ['Sell', 'Withdraw']:
+                    elif txn_type in ['Sell', 'Withdraw', 'Fee']:
                         amount_sold += txn_group['token_amt'].sum()
                         value_sold += txn_group['usd_value'].sum()
 
@@ -133,7 +152,6 @@ def calculate_pnl(data):
             # Update total PIC PnL after processing all tokens for this exchange
             portfolio_structure[pic_name]['total_pic_pnl'] += portfolio_structure[pic_name]['exchanges'][exchange_name]['total_exchange_pnl']
 
-    return json.dumps(portfolio_structure)
-
+    return json.dumps(portfolio_structure, default=json_serial)
 
 
