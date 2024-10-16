@@ -5,7 +5,7 @@ import time
 from datetime import timedelta
 
 # External Imports
-from exchanges_func.utils import *
+from exchanges_func.utils import convert_timestamp_to_date, generate_custom_uuid, get_bin_hist_price, get_binance_symbols, extract_date, convert_to_unix, assign_time, process_owners
 from db_func.funcs import add_txn
 import pandas as pd
 import requests
@@ -109,7 +109,7 @@ def loop_get_binance_history(bin_api_key, bin_secret_key, start_date, end_date, 
 
     return trade_history_full
 
-def parse_binance_hist(binance_trade_history, owner):
+def parse_binance_hist(binance_trade_history, owner, all_unique):
     
     binance_orders = []
 
@@ -120,6 +120,9 @@ def parse_binance_hist(binance_trade_history, owner):
         usd_value = float(price) * float(quantity)
         isBuyer = trade.get('isBuyer')
         action = ''
+        symbol = trade.get('symbol')
+        date = convert_timestamp_to_date(trade.get('time'))
+        trade_id = trade.get('id', '0')
 
         # Decide buy or sell
         if isBuyer is False:
@@ -127,10 +130,14 @@ def parse_binance_hist(binance_trade_history, owner):
         elif isBuyer is True:
             action = "Buy"
 
+        # Generate custom UUID
+        uuid_components = [trade_id, date, symbol, price, quantity, action, owner, 'binance']
+        custom_uuid = generate_custom_uuid(all_unique, *uuid_components)
+
         order = {
-            'date': convert_timestamp_to_date(trade.get('time')),
-            'exchange_id': trade.get('id', '0'),
-            'position': trade.get('symbol'),
+            'date': date,
+            'exchange_id': custom_uuid,
+            'position': symbol,
             'action': action, 
             'PIC': owner,
             'exchange': 'binance',
@@ -144,11 +151,11 @@ def parse_binance_hist(binance_trade_history, owner):
     df_binance_orders = pd.DataFrame(binance_orders)
     return df_binance_orders
 
-def get_bin_history(bin_api_key, bin_secret_key, owner, start_date, end_date):
+def get_bin_history(bin_api_key, bin_secret_key, owner, start_date, end_date, all_unique):
 
     binance_symbols = get_binance_symbols()
     raw_result = loop_get_binance_history(bin_api_key, bin_secret_key, start_date, end_date, binance_symbols)
-    df_parsed_hist = parse_binance_hist(raw_result, owner)
+    df_parsed_hist = parse_binance_hist(raw_result, owner, all_unique)
 
     return df_parsed_hist      
 
@@ -199,7 +206,7 @@ def loop_get_bin_deposit(bin_api_key, bin_secret_key, start_date, end_date):
 
     return record_history_full
 
-def parse_bin_deposits(bin_api_key, bin_secret_key, owner, start_date, end_date):
+def parse_bin_deposits(bin_api_key, bin_secret_key, owner, start_date, end_date, all_unique):
     bin_raw_deposits = loop_get_bin_deposit(bin_api_key, bin_secret_key, start_date, end_date)
     binance_orders = []
 
@@ -211,17 +218,23 @@ def parse_bin_deposits(bin_api_key, bin_secret_key, owner, start_date, end_date)
             continue
 
         symbol = trade.get('coin') 
-        price = float(get_bin_price(symbol))
+        timestamp = trade.get('insertTime')
+        price = float(get_bin_hist_price(symbol, ))
         amount = float(trade.get('amount'))
 
         usd_value = price * amount
 
-        date = convert_timestamp_to_date(trade.get('insertTime'))
+        date = convert_timestamp_to_date(timestamp)
+        trade_id = trade.get('txId')
+
+        # Generate custom UUID
+        uuid_components = [trade_id, date, symbol, "Deposit", owner, 'binance', price, amount]
+        custom_uuid = generate_custom_uuid(all_unique, *uuid_components)
 
         order = {
             
             'date': date,
-            'exchange_id': trade.get('txId'),
+            'exchange_id': custom_uuid,
             'position': symbol, 
             'action': 'Deposit',
             'PIC': owner,
@@ -283,10 +296,8 @@ def loop_get_bin_withdraw(bin_api_key, bin_secret_key, start_date, end_date):
 
     return record_history_full
 
-def parse_bin_withdrawals(bin_api_key, bin_secret_key, owner, start_date, end_date):
-
+def parse_bin_withdrawals(bin_api_key, bin_secret_key, owner, start_date, end_date, all_unique):
     bin_raw_withdrawals = loop_get_bin_withdraw(bin_api_key, bin_secret_key, start_date, end_date)
-
     binance_orders = []
 
     for trade in bin_raw_withdrawals:
@@ -297,16 +308,22 @@ def parse_bin_withdrawals(bin_api_key, bin_secret_key, owner, start_date, end_da
             continue
 
         symbol = trade.get('coin') 
-        price = float(get_bin_price(symbol))
+        timestamp = trade.get('completeTime')
+        price = float(get_bin_hist_price(symbol, timestamp))
         amount = float(trade.get('amount'))
 
         usd_value = price * amount
 
-        date = extract_date(trade.get('completeTime'))
+        date = extract_date(timestamp)
+        trade_id = trade.get('txId')
+
+        # Generate custom UUID
+        uuid_components = [trade_id, date, symbol, "Withdraw", owner, 'binance', price, amount]
+        custom_uuid = generate_custom_uuid(all_unique, *uuid_components)
 
         order = {
             'date': date,
-            'exchange_id': trade.get('txId'),
+            'exchange_id': custom_uuid,
             'position': symbol, 
             'action': 'Withdraw',
             'PIC': owner,
@@ -323,14 +340,14 @@ def parse_bin_withdrawals(bin_api_key, bin_secret_key, owner, start_date, end_da
 
 
 # Database Section
-def fetch_history(owner_data, history_type, start_date, end_date):
+def fetch_history(owner_data, history_type, start_date, end_date, all_unique):
     """Fetch history data based on the type."""
     if history_type == 'trades':
-        return get_bin_history(owner_data['bin_api_key'], owner_data['bin_secret_key'], owner_data['pic'], start_date, end_date)
+        return get_bin_history(owner_data['bin_api_key'], owner_data['bin_secret_key'], owner_data['pic'], start_date, end_date, all_unique)
     elif history_type == 'deposits':
-        return parse_bin_deposits(owner_data['bin_api_key'], owner_data['bin_secret_key'], owner_data['pic'], start_date, end_date)
+        return parse_bin_deposits(owner_data['bin_api_key'], owner_data['bin_secret_key'], owner_data['pic'], start_date, end_date, all_unique)
     elif history_type == 'withdrawals':
-        return parse_bin_withdrawals(owner_data['bin_api_key'], owner_data['bin_secret_key'], owner_data['pic'], start_date, end_date)
+        return parse_bin_withdrawals(owner_data['bin_api_key'], owner_data['bin_secret_key'], owner_data['pic'], start_date, end_date, all_unique)
     else:
         raise ValueError(f"Invalid history type: {history_type}")
 
@@ -353,7 +370,7 @@ def save_to_database(df):
         )
 
 # Master
-def save_binance_records(acc_owners, mode):
+def save_binance_records(acc_owners, mode, all_unique):
     """
         Save trading history for a given owner within a specified date range.
 
@@ -374,5 +391,5 @@ def save_binance_records(acc_owners, mode):
         history_types = ['trades', 'deposits', 'withdrawals']
 
         for history_type in history_types:
-            df = fetch_history(owner_data, history_type, start_date, end_date)
+            df = fetch_history(owner_data, history_type, start_date, end_date, all_unique = True)
             save_to_database(df)

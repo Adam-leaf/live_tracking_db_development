@@ -1,6 +1,6 @@
 import pandas as pd
 import json
-from exchanges_func.utils import get_bin_price
+from exchanges_func.utils import get_bin_price, get_bybit_price
 from datetime import datetime
 
 def json_serial(obj):
@@ -124,7 +124,13 @@ def calculate_pnl(data):
                     avg_buy_price = value_spent / amount_bought
 
                 current_balance = amount_bought - amount_sold
-                current_price = get_bin_price(token_name)
+                current_price = 0
+
+                if exchange_name == "bybit":
+                    current_price = float(get_bybit_price(token_name))
+                elif exchange_name == "binance":
+                    current_price = float(get_bin_price(token_name))
+
                 df_pnl_updated = update_df_pnl(df_pnl, avg_buy_price, value_sold, amount_sold, current_balance, current_price)
 
                 portfolio_structure[pic_name]['exchanges'][exchange_name]['tokens'][token_name]['pnl'] = df_pnl_updated.to_dict(orient='records')

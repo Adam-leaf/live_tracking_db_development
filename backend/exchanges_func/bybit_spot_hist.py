@@ -8,7 +8,7 @@ import json
 from requests.exceptions import ConnectTimeout, RequestException
 
 # External Imports
-from exchanges_func.utils import convert_timestamp_to_date, get_bybit_price, convert_to_unix, assign_time, process_owners
+from exchanges_func.utils import convert_timestamp_to_date, generate_custom_uuid, convert_to_unix, assign_time, process_owners, get_bybit_hist_price
 from db_func.funcs import add_txn
 import pandas as pd
 import requests
@@ -120,8 +120,8 @@ def loop_get_bybit_history(bb_api_key, bb_secret_key, category, start_date, end_
 
     return trade_history_full
 
-def parse_bybit_hist(bybit_trade_history, owner):
-    
+def parse_bybit_hist(bybit_trade_history, owner, all_unique):
+
     bybit_orders = []
 
     for trade in bybit_trade_history:
@@ -129,12 +129,21 @@ def parse_bybit_hist(bybit_trade_history, owner):
         execValue = trade.get('execPrice') # Reconfirm if execPrice or execValue will give in USD terms
         execQty = trade.get('execQty')
         usd_value = float(execValue) * float(execQty)
+        date = trade.get('execTime')
+        trade_id = trade.get('execId')
+        symbol = trade.get('symbol')
+        action = trade.get('side')
+        
+
+        # Generate custom UUID
+        uuid_components = [trade_id, date, symbol, execValue, execQty, action, owner, 'bybit']
+        custom_uuid = generate_custom_uuid(all_unique, *uuid_components)
 
         order = {
-            'date': convert_timestamp_to_date(trade.get('execTime')),
-            'exchange_id': trade.get('execId'),
-            'position': trade.get('symbol'),
-            'action': trade.get('side'),
+            'date': convert_timestamp_to_date(date),
+            'exchange_id': custom_uuid,
+            'position': symbol,
+            'action': action,
             'PIC': owner,
             'exchange': 'bybit',
             'exec_qty': execQty,
@@ -147,9 +156,9 @@ def parse_bybit_hist(bybit_trade_history, owner):
     df_bybit_orders = pd.DataFrame(bybit_orders)
     return df_bybit_orders
 
-def get_bybit_history(bb_api_key, bb_secret_key, owner, start_date, end_date):
+def get_bybit_history(bb_api_key, bb_secret_key, owner, start_date, end_date, all_unique):
     raw_result = loop_get_bybit_history(bb_api_key, bb_secret_key, 'spot', start_date, end_date)
-    df_parsed_hist = parse_bybit_hist(raw_result, owner)
+    df_parsed_hist = parse_bybit_hist(raw_result, owner, all_unique)
 
     return df_parsed_hist
 
@@ -236,21 +245,27 @@ def get_loop_bybit_deposit(bb_api_key, bb_secret_key, start_date, end_date, curs
 
     return record_history_full
 
-def parse_bybit_deposits(bb_api_key, bb_secret_key, start_date, end_date, owner, cursor=""): 
+def parse_bybit_deposits(bb_api_key, bb_secret_key, start_date, end_date, owner, all_unique, cursor=""): 
     bybit_deposits = get_loop_bybit_deposit(bb_api_key, bb_secret_key, start_date, end_date, cursor)
     bybit_orders = []
 
     for trade in bybit_deposits:
         
+        date = trade.get('successAt')
         symbol = trade.get('coin') 
-        price = float(get_bybit_price(symbol))
+        price = float(get_bybit_hist_price(symbol,date))
         amount = float(trade.get('amount'))
+        trade_id = trade.get('txID')
 
         usd_value = price * amount
 
+        # Generate custom UUID
+        uuid_components = [trade_id, date, symbol, price, amount, "Deposit", owner, 'bybit']
+        custom_uuid = generate_custom_uuid(all_unique, *uuid_components)
+
         order = {
-            'date': convert_timestamp_to_date(trade.get('successAt')),
-            'exchange_id': trade.get('txID'),
+            'date': convert_timestamp_to_date(date),
+            'exchange_id': custom_uuid,
             'position': symbol, 
             'action': 'Deposit',
             'PIC': owner,
@@ -349,22 +364,28 @@ def get_loop_bybit_withdraw(bb_api_key, bb_secret_key, withdraw_type, start_date
 
     return record_history_full
 
-def parse_bybit_withdrawals(bb_api_key, bb_secret_key, start_date, end_date, owner, cursor= ""): 
+def parse_bybit_withdrawals(bb_api_key, bb_secret_key, start_date, end_date, owner, all_unique, cursor= ""): 
     withdraw_type = 2
     bybit_withdrawals= get_loop_bybit_withdraw(bb_api_key, bb_secret_key, withdraw_type, start_date, end_date, cursor)
     bybit_orders = []
 
     for trade in bybit_withdrawals:
         
+        date = trade.get('createTime')
         symbol = trade.get('coin') 
-        price = float(get_bybit_price(symbol))
+        price = float(get_bybit_hist_price(symbol, date))
         amount = float(trade.get('amount'))
+        trade_id = trade.get('txID')
 
         usd_value = price * amount
 
+        # Generate custom UUID
+        uuid_components = [trade_id, date, symbol, price, amount, "Withdraw", owner, 'bybit']
+        custom_uuid = generate_custom_uuid(all_unique, *uuid_components)
+
         order = {
-            'date': convert_timestamp_to_date(trade.get('createTime')),
-            'exchange_id': trade.get('txID'),
+            'date': convert_timestamp_to_date(date),
+            'exchange_id': custom_uuid,
             'position': symbol, 
             'action': 'Withdraw',
             'PIC': owner,
@@ -381,14 +402,14 @@ def parse_bybit_withdrawals(bb_api_key, bb_secret_key, start_date, end_date, own
 
 
 # Database Section
-def fetch_history(owner_data, history_type, start_date, end_date):
+def fetch_history(owner_data, history_type, start_date, end_date, all_unique):
     """Fetch history data based on the type."""
     if history_type == 'trades':
-        return get_bybit_history(owner_data['bybit_api_key'], owner_data['bybit_secret_key'], owner_data['pic'], start_date, end_date)
+        return get_bybit_history(owner_data['bybit_api_key'], owner_data['bybit_secret_key'], owner_data['pic'], start_date, end_date, all_unique)
     elif history_type == 'deposits':
-        return parse_bybit_deposits(owner_data['bybit_api_key'], owner_data['bybit_secret_key'], start_date, end_date, owner_data['pic'])
+        return parse_bybit_deposits(owner_data['bybit_api_key'], owner_data['bybit_secret_key'], start_date, end_date, owner_data['pic'], all_unique)
     elif history_type == 'withdrawals':
-        return parse_bybit_withdrawals(owner_data['bybit_api_key'], owner_data['bybit_secret_key'], start_date, end_date, owner_data['pic'])
+        return parse_bybit_withdrawals(owner_data['bybit_api_key'], owner_data['bybit_secret_key'], start_date, end_date, owner_data['pic'], all_unique)
     else:
         raise ValueError(f"Invalid history type: {history_type}")
 
@@ -412,7 +433,7 @@ def save_to_database(df):
 
 
 # Master
-def save_bybit_records(acc_owners, mode):
+def save_bybit_records(acc_owners, mode, all_unique):
     """
         Save trading history for a given owner within a specified date range.
 
@@ -435,5 +456,5 @@ def save_bybit_records(acc_owners, mode):
         history_types = ['trades', 'deposits', 'withdrawals']
 
         for history_type in history_types:
-            df = fetch_history(owner_data, history_type, start_date, end_date)
+            df = fetch_history(owner_data, history_type, start_date, end_date, all_unique)
             save_to_database(df)

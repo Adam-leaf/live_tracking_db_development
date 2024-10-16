@@ -6,8 +6,9 @@ from db_func.funcs import get_as_dict, get_all
 import json
 
 def update_db(acc_owners, mode):
-    save_bybit_records(acc_owners, mode)
-    save_binance_records(acc_owners, mode)
+    all_unique = False
+    save_bybit_records(acc_owners, mode, all_unique)
+    save_binance_records(acc_owners, mode, all_unique)
 
 def start_calculation():
     raw_transactions = get_as_dict(lambda: get_all())

@@ -3,6 +3,7 @@ import math
 import os
 from datetime import datetime, timedelta
 import requests
+import uuid
 
 def save_to_json(data, filename):
     with open(filename, 'w') as json_file:
@@ -86,6 +87,18 @@ def assign_time(mode):
         raise ValueError("Invalid mode. Choose 'Full', 'Weekly', 'Monthly', or 'Since2023'.")
 
     return start_date, end_date
+
+def generate_custom_uuid(all_unique=False, *args):
+
+    # Combine all arguments into a single string
+    combined = '_'.join(str(arg) for arg in args)
+    
+    # If all_unique is True, add current timestamp to ensure uniqueness
+    if all_unique:
+        combined += datetime.now().isoformat()
+    
+    # Use the combined string to create a UUID
+    return str(uuid.uuid5(uuid.NAMESPACE_OID, combined))
 
 
 # Binance
