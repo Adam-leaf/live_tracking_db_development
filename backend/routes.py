@@ -23,6 +23,14 @@ def view_pnl():
 
 
 # Backend Routes
+@app.route("/all_transaction", methods=["GET"])
+def all_transaction():
+
+    all_transactions = get_as_dict(lambda: get_all())
+
+    return all_transactions
+
+
 @app.route("/db_update", methods=["GET"])
 def start_update_db():
     acc_owners = ['J', 'VKEE']
