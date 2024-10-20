@@ -6,7 +6,7 @@ from sqlalchemy.exc import IntegrityError
 def initiate () : 
     db.create_all()
 
-
+""" Create """
 def add_txn(exchange_id_in, txn_date_in, position_in, txn_type_in, pic_in, exchange_in, token_amt_in, price_in, usd_amt_in):
     
     # Check if a transaction with the same exchange_id and pic already exists
@@ -37,17 +37,25 @@ def add_txn(exchange_id_in, txn_date_in, position_in, txn_type_in, pic_in, excha
         print(f"Transaction already exists: {exchange_id_in}  \nPIC: {pic_in}, with exchange: {exchange_in}. Skipping.")
 
 
+""" Read """
 def get_all():
     return Transaction.query.all() 
 
+def get_by_pic(pic_in):
+    return Transaction.query.filter_by(pic=pic_in).all()
 
-def get_byId (txn_id_in) : 
-    return Transaction.query.filter_by(txn_id = txn_id_in).first()
-    
+def get_by_pic_and_exchange(pic_in, exchange_in):
+    return Transaction.query.filter_by(pic=pic_in, exchange=exchange_in).all
 
-def get_byPic (pic_in) : 
-    return Transaction.query.filter_by(pic = pic_in).all()
-
+# Function for search functionality
+def search_transactions(search_term):
+    return Transaction.query.filter(
+        db.or_(
+            Transaction.pic.ilike(f"%{search_term}%"),
+            Transaction.exchange.ilike(f"%{search_term}%"),
+            Transaction.exchange_id.ilike(f"%{search_term}%"),
+        )
+    ).all()
 
 # The two functions below are for converting the transaction model to a dictionary 
 def query_to_dict(query_results):

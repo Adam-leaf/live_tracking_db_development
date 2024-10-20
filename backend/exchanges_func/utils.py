@@ -133,9 +133,10 @@ def extract_date(datetime_str):
     return date_only
 
 def get_bin_price(asset):
-    # # Check if the price is already in the cache
-    # if asset in price_cache:
-    #     return price_cache[asset]
+
+    renamed = {'MATIC': 'POL'}
+    # Check if the asset needs to be renamed
+    asset = renamed.get(asset, asset)
     
     # Stablecoins
     if asset in ['USDT', 'USDC', 'BUSD']:
@@ -145,6 +146,15 @@ def get_bin_price(asset):
     url = f'https://api.binance.com/api/v3/ticker/price?symbol={asset}USDT'
     response = requests.get(url)
     data = response.json() 
+
+    # Convert price to float and cache it
+    result = data.get('result', {})
+    list_data = result.get('list', [])
+
+    if list_data:
+        lastPrice = list_data[0].get('lastPrice')
+        if lastPrice is not None:
+            return float(lastPrice)
     
     # Convert price to float and cache it
     price = float(data.get('price', 0.0))
@@ -180,28 +190,34 @@ def get_bin_hist_price(asset, timestamp):
 
 # Bybit
 def get_bybit_price(asset):
-    # Check if the price is already in the cache
-    # if asset in price_cache:
-    #     return price_cache[asset]
+
+    renamed = {'MATIC': 'POL'}
     
+    # Check if the asset needs to be renamed
+    asset = renamed.get(asset, asset)
+
     # Stablecoins
     if asset in ['USDT', 'USDC', 'BUSD']:
         return 1.0
     
     # If not, fetch the price from the API
-
     url = f'https://api.bybit.com/v5/market/tickers?category=spot&symbol={asset}USDT'
     response = requests.get(url)
     data = response.json()
 
     # Convert price to float and cache it
     result = data.get('result', {})
-    list = result.get('list')[0]
-    lastPrice = list.get('lastPrice')
+    list_data = result.get('list', [])
 
-    # price_cache[asset] = lastPrice
+    if list_data:
+        lastPrice = list_data[0].get('lastPrice')
+        if lastPrice is not None:
+            return float(lastPrice)
+
+    # If price cannot be found
+    print(f"Price for {asset} could not be found.")
+    return 0
     
-    return lastPrice
 
 def get_bybit_hist_price(asset, timestamp):
     category = 'spot'

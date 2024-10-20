@@ -3,6 +3,7 @@ import json
 from exchanges_func.utils import get_bin_price, get_bybit_price
 from datetime import datetime
 
+""" Utility Functions """
 def json_serial(obj):
     """JSON serializer for objects not serializable by default json code"""
     if isinstance(obj, (datetime, pd.Timestamp)):
@@ -23,7 +24,7 @@ def clean_transactions(data):
         if position in ['BTC', 'ETH']:
             return position
 
-        quote_currencies = ['BUSD','USDT', 'USD', 'USDC', 'BTC', 'ETH'] # FIX THIS, BUSD can become B
+        quote_currencies = ['BUSD','USDT', 'USDC', 'USD', 'BTC', 'ETH']
         
         # Remove quote currencies from the end of the position string
         for quote in quote_currencies:
@@ -44,6 +45,7 @@ def clean_transactions(data):
     
     return cleaned_data
 
+""" Calculations Section """
 def create_df_pnl(token_name):
     df_pnl = pd.DataFrame(columns=['PnL Type', 'Position', 'Avg Buy (USD)', 'Sold Value (USD)', 'Sold Amount', 'Current Balance','USD Value','PnL'])
     df_pnl.loc[0] = ['Realized', token_name, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
@@ -71,24 +73,23 @@ def calculate_pnl(data):
     all_transactions = clean_transactions(data)
     df = pd.DataFrame(all_transactions)
 
-    # Convert 'date' column to datetime if it's not already
-    df['txn_date'] = pd.to_datetime(df['txn_date'])
-
     # Sort the dataframe by date
+    df['txn_date'] = pd.to_datetime(df['txn_date'])
     df = df.sort_values('txn_date')
 
     portfolio_structure = {}
     grouped_by_pic = df.groupby('pic')
 
     for pic_name, pic_group in grouped_by_pic:
-        portfolio_structure[pic_name] = {
+        portfolio_structure['pic'] = portfolio_structure.get('pic', {})
+        portfolio_structure['pic'][pic_name] = {
             'exchanges': {},
             'total_pic_pnl': 0
         }
         
         grouped_by_exchange = pic_group.groupby('exchange')
         for exchange_name, exchange_group in grouped_by_exchange:
-            portfolio_structure[pic_name]['exchanges'][exchange_name] = {
+            portfolio_structure['pic'][pic_name]['exchanges'][exchange_name] = {
                 'tokens': {},
                 'total_exchange_pnl': 0
             }
@@ -98,7 +99,7 @@ def calculate_pnl(data):
                 # Sort token_group by date
                 token_group['txn_date'] = token_group['txn_date'].dt.strftime('%Y-%m-%d')
 
-                portfolio_structure[pic_name]['exchanges'][exchange_name]['tokens'][token_name] = {
+                portfolio_structure['pic'][pic_name]['exchanges'][exchange_name]['tokens'][token_name] = {
                     'transactions': json.loads(token_group.reset_index(drop=True).to_json(orient='records')),
                     'pnl': None,
                     'pnl_verification': None
@@ -133,7 +134,7 @@ def calculate_pnl(data):
 
                 df_pnl_updated = update_df_pnl(df_pnl, avg_buy_price, value_sold, amount_sold, current_balance, current_price)
 
-                portfolio_structure[pic_name]['exchanges'][exchange_name]['tokens'][token_name]['pnl'] = df_pnl_updated.to_dict(orient='records')
+                portfolio_structure['pic'][pic_name]['exchanges'][exchange_name]['tokens'][token_name]['pnl'] = df_pnl_updated.to_dict(orient='records')
 
                 curr_usd_value = current_balance * current_price
                 difference = (value_sold + curr_usd_value) - value_spent
@@ -150,13 +151,13 @@ def calculate_pnl(data):
                     'Total PNL': [pnl_total]
                 })
 
-                portfolio_structure[pic_name]['exchanges'][exchange_name]['tokens'][token_name]['pnl_verification'] = df_verifier.to_dict(orient='records')
+                portfolio_structure['pic'][pic_name]['exchanges'][exchange_name]['tokens'][token_name]['pnl_verification'] = df_verifier.to_dict(orient='records')
 
                 # Update total exchange PnL
-                portfolio_structure[pic_name]['exchanges'][exchange_name]['total_exchange_pnl'] += pnl_total
+                portfolio_structure['pic'][pic_name]['exchanges'][exchange_name]['total_exchange_pnl'] += pnl_total
 
             # Update total PIC PnL after processing all tokens for this exchange
-            portfolio_structure[pic_name]['total_pic_pnl'] += portfolio_structure[pic_name]['exchanges'][exchange_name]['total_exchange_pnl']
+            portfolio_structure['pic'][pic_name]['total_pic_pnl'] += portfolio_structure['pic'][pic_name]['exchanges'][exchange_name]['total_exchange_pnl']
 
     return json.dumps(portfolio_structure, default=json_serial)
 
