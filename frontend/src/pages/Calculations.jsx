@@ -12,7 +12,7 @@ const Calculations = () => {
     const fetchPnlData = async () => {
       setIsLoading(true);
       try {
-        const response = await fetch('http://127.0.0.1:5001/calc_pnl');
+        const response = await fetch('http://13.229.173.120:5001/calc_pnl');
         const data = await response.json();
         setPnlData(data);
         if (data.pic && Object.keys(data.pic).length > 0) {

@@ -16,7 +16,7 @@ const Transactions = () => {
     const fetchTransactions = async () => {
       try {
         const response = await axios.get(
-          "http://127.0.0.1:5001/all_transaction"
+          "http://13.229.173.120:5001/all_transaction"
         );
         setTransactions(response.data);
         setIsLoading(false);
