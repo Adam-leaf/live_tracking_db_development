@@ -6,7 +6,7 @@ export default defineConfig({
   plugins: [react()],
   server: {
     hmr: {
-      host: '13.229.173.120',
+      host: '172.31.39.223',
     }
   }
 })
