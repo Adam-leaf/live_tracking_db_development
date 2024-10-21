@@ -14,22 +14,29 @@ def clean_transactions(data):
     """
     Transforms positions into only the significant token.
     Ie: SOLUSDT -> SOL
+    Removes entries where position is only USDC, BUSD, or USDT.
     """
     # Convert the list of dictionaries to a DataFrame
     df = pd.DataFrame(data)
     
     # Function to extract the significant token
     def extract_significant_token(position):
-        # If the position is already BTC or ETH, return it as is
+        quote_currencies = ['BUSD','USDT','USDC', 'USD', 'BTC', 'ETH']
+        stablecoins = ['USDT', 'USDC', 'BUSD', 'DAI', 'TUSD']
+
+        # Filter 1: If the position is already BTC or ETH, return it as is
         if position in ['BTC', 'ETH']:
             return position
-
-        quote_currencies = ['BUSD','USDT','USDC', 'USD', 'BTC', 'ETH']
         
-        # Remove quote currencies from the end of the position string
+        # Filter 2: Remove quote currencies from the end of the position string
         for quote in quote_currencies:
             if position.endswith(quote):
-                return position[:-len(quote)]
+                position = position[:-len(quote)]
+                break
+        
+        # Filter 3: Remove stablecoins
+        if position in stablecoins:
+            return ''
         
         # If no quote currency is found, return the original position
         return position
