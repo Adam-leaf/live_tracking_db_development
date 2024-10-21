@@ -11,10 +11,10 @@ function App() {
         <Navbar />
 
         {/* Content */}
-        <Container maxW={"1200"} my={4}>
+        <Container maxW={"1400"} my={4}>
           <Routes>
             <Route path="/transactions" element={<Transactions />}></Route>
-            <Route path="/calculations" element={<Calculations />}></Route>
+            <Route path="/spot_pnl" element={<Calculations />}></Route>
           </Routes>
         </Container>
       </Stack>

@@ -24,7 +24,7 @@ def clean_transactions(data):
         if position in ['BTC', 'ETH']:
             return position
 
-        quote_currencies = ['BUSD','USDT', 'USDC', 'USD', 'BTC', 'ETH']
+        quote_currencies = ['BUSD','USDT','USDC', 'USD', 'BTC', 'ETH']
         
         # Remove quote currencies from the end of the position string
         for quote in quote_currencies:

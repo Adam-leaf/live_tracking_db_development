@@ -1,4 +1,4 @@
-import { Text, Box, useColorModeValue, Button, HStack } from "@chakra-ui/react";
+import { Text, Box, useColorModeValue, Button, HStack, Select } from "@chakra-ui/react";
 import { useState, useEffect, useMemo } from 'react';
 import axios from "axios";
 
@@ -10,13 +10,13 @@ const Transactions = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   useEffect(() => {
     const fetchTransactions = async () => {
       try {
         const response = await axios.get(
-          "http://127.0.0.1:5001/all_transaction"
+          "http://13.229.173.120:5001/all_transaction"
         );
         setTransactions(response.data);
         setIsLoading(false);
@@ -29,16 +29,25 @@ const Transactions = () => {
     fetchTransactions();
   }, []);
 
-  /* Pagination Control */
-  const totalPages = useMemo(() => Math.ceil(transactions.length / itemsPerPage), [transactions]);
+  /* Pagination Controls */
+  const totalPages = useMemo(() => {
+    if (itemsPerPage === 'all') return 1;
+    return Math.ceil(transactions.length / Number(itemsPerPage));
+  }, [transactions, itemsPerPage]);
 
   const currentTransactions = useMemo(() => {
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    return transactions.slice(startIndex, startIndex + itemsPerPage);
-  }, [transactions, currentPage]);
+    if (itemsPerPage === 'all') return transactions;
+    const startIndex = (currentPage - 1) * Number(itemsPerPage);
+    return transactions.slice(startIndex, startIndex + Number(itemsPerPage));
+  }, [transactions, currentPage, itemsPerPage]);
 
   const handlePageChange = (newPage) => {
     setCurrentPage(newPage);
+  };
+
+  const handleItemsPerPageChange = (event) => {
+    setItemsPerPage(event.target.value);
+    setCurrentPage(1); // Reset to first page when changing items per page
   };
 
   return (
@@ -67,7 +76,19 @@ const Transactions = () => {
         />
 
         {/* Pagination Controls */}
-        <HStack justifyContent="center" mt={4}>
+        <HStack justifyContent="center" mt={4} spacing={4}>
+          <Text>Items:</Text>
+          <Select
+            value={itemsPerPage}
+            onChange={handleItemsPerPageChange}
+            width="auto"
+          >
+            <option value="10">10</option>
+            <option value="50">50</option>
+            <option value="100">100</option>
+            <option value="1000">1000</option>
+            <option value="all">All</option>
+          </Select>
           <Button
             onClick={() => handlePageChange(currentPage - 1)}
             isDisabled={currentPage === 1}

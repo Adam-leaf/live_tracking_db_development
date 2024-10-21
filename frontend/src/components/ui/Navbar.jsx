@@ -14,7 +14,7 @@ const Navbar = () => {
   const { colorMode, toggleColorMode } = useColorMode();
 
   return (
-    <Container maxW={"900px"}>
+    <Container maxW={"1200px"}>
       <Box
         px={4}
         my={4}
@@ -32,8 +32,11 @@ const Navbar = () => {
             <Button as={RouterLink} to="/transactions">
               Transactions
             </Button>
-            <Button as={RouterLink} to="/calculations">
-              Calculations
+            <Button as={RouterLink} to="/spot_pnl">
+              Spot Pnl
+            </Button>
+            <Button as={RouterLink} to="/futures_pnl">
+              Futures Pnl
             </Button>
             <Button as={RouterLink} to="/calculations">
               Metrics
